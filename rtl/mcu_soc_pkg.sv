@@ -13,6 +13,29 @@ package mcu_soc_pkg;
   };
   */
 
+  typedef struct packed {
+    bit          UseRReady;
+    bit          CombGnt;
+    int unsigned AddrWidth;
+    int unsigned DataWidth;
+    int unsigned IdWidth;
+    bit          Integrity;
+    bit          BeFull;
+    obi_optional_cfg_t OptionalCfg;
+  } pulp_obi_cfg_t;
+
+  localparam pulp_obi_cfg_t ObiCfg = '{
+    UseRReady:   1'b1,
+    CombGnt:     1'b0,
+    AddrWidth:   32,
+    DataWidth:   32,
+    IdWidth:     4,
+    Integrity:   1'b0,
+    BeFull:      1'b1,
+    OptionalCfg: '0
+  };
+  
+
   import obi_pkg::*;
 
   typedef struct packed {

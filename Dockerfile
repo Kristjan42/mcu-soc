@@ -14,15 +14,15 @@ RUN pip install git+https://github.com/riscv-software-src/riscv-isac@777d2b4
 RUN pip install pytest-xdist
 
 USER 0:0
-RUN curl -L https://github.com/sifive/elf2hex/archive/refs/tags/v20.08.00.00.tar.gz -o elf2hex.tar.gz 
-RUN tar -xvzpf elf2hex.tar.gz 
-RUN rm elf2hex.tar.gz 
-RUN cd elf2hex-* 
-RUN ./configure --target=riscv32-unknown-elf 
-RUN make 
-RUN make install 
-RUN cd .. 
-RUN rm -rf elf2hex-*
+RUN curl -L https://github.com/sifive/elf2hex/archive/refs/tags/v20.08.00.00.tar.gz -o elf2hex.tar.gz && \
+    tar -xvzpf elf2hex.tar.gz && \
+    rm elf2hex.tar.gz && \
+    cd elf2hex-* && \
+    ./configure --target=riscv32-unknown-elf && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf elf2hex-*
 
 RUN apt install -y boolector 
 

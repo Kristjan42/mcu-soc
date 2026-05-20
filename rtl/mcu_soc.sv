@@ -66,13 +66,28 @@ module mcu_soc import mcu_soc_pkg::*; #(
   logic                 obi_data_rerr;
 
 // Xbar & Obi config
-  localparam obi_pkg::xbar_cfg xbar_cfg = obi_pkg::xbar_default_cfg(NumManagers, NumSubordinates);
+  localparam obi_pkg::xbar_cfg_t xbar_cfg = obi_pkg::xbar_default_cfg(NumManagers, NumSubordinates, AddrWidth, DataWdith, IdWidth);
 
-  localparam obi_pkg::obi_cfg obi_cfg = obi_pkg::obi_default_cfg(AddrWidth, DataWidth, IdWidth);
+  localparam bit unsigned [xbar_cfg.Subordinates-1:0] UseSrFifoMask;
+  assign UseSrFifoMask[XbarMem] = '0;
+  assign UseSrFifoMask[XbarUart] = '1;
+  localparam int unsigned SrFifoDepth [xbar_cfg.Subordinates];
+  assign SrFifoDepth[XbarMem] = 0;
+  assign SrFifoDepth[XbarUart] = 8;
 
-  `TYPEDEF_OBI_A_CHAN(obi_a_t, AddrWidth, DataWidth, IdWidth, NumManagers);
+  localparam obi_pkg::obi_if_type_e obi_manager = MANAGER;
+  localparam obi_pkg::obi_if_type_e obi_subordinate = SUBORDINATE;
 
-  `TYPEDEF_OBI_R_CHAN(obi_r_t, DataWidth, IdWidth);
+  typedef struct packed {
+        logic [xbar_cfg.IdWidth-1:0]              obi_aid;
+        logic [$clog2(xbar_cfg.Managers)-1:0]    obi_mid;
+  } obi_sub_id;
+
+  localparam type obi_sub_id_t = obi_sub_id;
+
+  `TYPEDEF_OBI_CHANS(mgr_obi_a_t, mgr_obi_r_t, obi_manager, xbar_cfg);
+
+  `TYPEDEF_OBI_CHANS(sub_obi_a_t, sub_obi_r_t, obi_subordinate, xbar_cfg);
 
   `TYPEDEF_XBAR_ADDR_MAP(addr_map_t, AddrWidth, NumSubordinates);
 
@@ -83,14 +98,23 @@ module mcu_soc import mcu_soc_pkg::*; #(
 
   `TYPEDEF_XBAR_CONNECTIVITY(Connectivity, NumSubordinates, NumManagers, {{2'b11}, {2'b11}});
 
-  obi_a_t obi_a_chans_mgr       [NumManagers];
+
+  /*
+  `TYPEDEF_OBI_A_CHAN(obi_a_t, AddrWidth, DataWidth, IdWidth, NumManagers);
+
+  `TYPEDEF_OBI_R_CHAN(obi_r_t, DataWidth, IdWidth);
+
+  `TYPEDEF_XBAR_ADDR_MAP(addr_map_t, AddrWidth, NumSubordinates);
+  */
+
+  mgr_obi_a_t obi_a_chans_mgr       [NumManagers];
   logic obi_agnt_signals_mgr    [NumManagers];
-  obi_r_t obi_r_chans_mgr       [NumManagers];
+  mgr_obi_r_t obi_r_chans_mgr       [NumManagers];
   logic obi_rready_signals_mgr  [NumManagers];
 
-  obi_a_t obi_a_chans_sub       [NumSubordinates];
+  sub_obi_a_t obi_a_chans_sub       [NumSubordinates];
   logic obi_agnt_signals_sub    [NumSubordinates];
-  obi_r_t obi_r_chans_sub       [NumSubordinates];
+  sub_obi_r_t obi_r_chans_sub       [NumSubordinates];
   logic obi_rready_signals_sub  [NumSubordinates];
 
   rvj1_top rvj1_inst (
@@ -188,9 +212,6 @@ module mcu_soc import mcu_soc_pkg::*; #(
     .DATA_WIDTH(DataWidth),
     .IDLEN(IdWidth)) m2o_data (
 
-    .clk_i  (clk),
-    .rstn_i (rstn),
-
     .mapped_req_id_i     (data_req_id),
     .mapped_req_addr_i   (data_req_addr),
     .mapped_req_data_i   (data_req_data),
@@ -237,16 +258,20 @@ module mcu_soc import mcu_soc_pkg::*; #(
 
   obi_xbar #(
         .XbarCfg(xbar_cfg),
-        .ObiCfg(obi_cfg),
-
-        .obi_a_t(obi_a_t),
-        .obi_r_t(obi_r_t),
+        
+        .mgr_obi_a_t(mgr_obi_a_t),
+        .mgr_obi_r_t(mgr_obi_r_t),
+        .sub_obi_a_t(sub_obi_a_t),
+        .sub_obi_r_t(sub_obi_r_t),
         .addr_map_t(addr_map_t),
+
+        .USE_SR_FIFO_MASK(UseSrFifoMask),
+        .SR_FIFO_DEPTHS(SrFifoDepth),
 
         .CONNECTIVITY(Connectivity)
     ) xbar_param (
-        .clk_i(clk_i),
-        .rstn_i(rstn_i),
+        .clk_i(clk),
+        .rstn_i(rstn),
         
         .mgr_obi_a_chans(obi_a_chans_mgr),
         .mgr_obi_agnt_signals(obi_agnt_signals_mgr),
@@ -267,12 +292,12 @@ module mcu_soc import mcu_soc_pkg::*; #(
     .INIT_FILE     (INIT_FILE),
     .INIT_FILE_BIN (INIT_FILE_BIN),
     .MEM_SIZE_WORDS(MEM_SIZE_WORDS),
-    .IDLEN         (IdWidth)
+    .IDLEN         ($bits(obi_sub_id_t))
   ) mem (
     .clk_i  (clk),
     .rstn_i (rstn),
 
-    .obi_aid_i    (1'b1),
+    .obi_aid_i    (obi_a_chans_sub[XbarMem].obi_aid),
     .obi_areq_i   (obi_a_chans_sub[XbarMem].obi_areq),
     .obi_agnt_o   (obi_agnt_signals_sub[XbarMem]),
     .obi_aaddr_i  (obi_a_chans_sub[XbarMem].obi_aadr),
@@ -280,7 +305,7 @@ module mcu_soc import mcu_soc_pkg::*; #(
     .obi_awdata_i (obi_a_chans_sub[XbarMem].obi_awdata),
     .obi_abe_i    (obi_a_chans_sub[XbarMem].obi_abe),
 
-    .obi_rid_o    (),
+    .obi_rid_o    (obi_r_chans_sub[XbarMem].obi_rid),
     .obi_rvalid_o (obi_r_chans_sub[XbarMem].obi_rvalid),
     .obi_rready_i (obi_rready_signals_sub[XbarMem]),
     .obi_rdata_o  (obi_r_chans_sub[XbarMem].obi_rdata)

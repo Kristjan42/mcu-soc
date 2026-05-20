@@ -23,10 +23,4 @@ package mcu_soc_pkg;
     XbarIfu   = 1
   } xbar_mgr_e;
 
-  /*
-  localparam addr_map Rvj1AddrMap [NoMaps] = '{
-      '{idx: XbarMem,  base: 32'h8000_0000, mask: 32'hffff_4000}, 
-      '{idx: XbarUart, base: 32'h6000_0000, mask: 32'hfffff200}
-  };
-  */
 endpackage

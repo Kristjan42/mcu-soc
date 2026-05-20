@@ -4,9 +4,8 @@ package:
     - "Jure Vreča <jure.vreca@ijs.si>"
 
 dependencies:
-  rvj1:            { git: "https://github.com/jurevreca12/rvj1.git",          rev: 6444908    }
-  mapped2obi:      { git: "https://github.com/jurevreca12/mapped2obi.git",    rev: 786644b    }
-  obi:             { git: "https://github.com/Kristjan42/obi.git",            rev: b2268be    }
+  rvj1:            { git: "https://github.com/jurevreca12/rvj1.git",          rev: 304e7e4}
+  obi:             { git: "https://github.com/Kristjan42/obi.git",            rev: 0bdc709}
 
 sources:
     - rtl/mcu_soc_pkg.sv
